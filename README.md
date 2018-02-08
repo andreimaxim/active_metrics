@@ -35,6 +35,12 @@ class Foo
 end
 ```
 
+Available methods:
+
+* `count`: add a value (default is 1) to a counter
+* `measure`: individual measurements that comprise a statistical distribution (i.e. latency measurements)
+* `sample`: simple key/numerical value pair
+
 Be mindful of any kind of conflicts when including the module in your class.
 
 ## Contributing
