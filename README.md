@@ -1,5 +1,6 @@
 # ActiveMetrics
 
+[![Gem Version](https://badge.fury.io/rb/active_metrics.svg)](https://badge.fury.io/rb/active_metrics)
 [![Build Status](https://travis-ci.org/andreimaxim/active_metrics.svg?branch=master)](https://travis-ci.org/andreimaxim/active_metrics)
 [![Maintainability](https://api.codeclimate.com/v1/badges/50e30f3b65985e299e9e/maintainability)](https://codeclimate.com/github/andreimaxim/active_metrics/maintainability)
 [![Test Coverage](https://api.codeclimate.com/v1/badges/50e30f3b65985e299e9e/test_coverage)](https://codeclimate.com/github/andreimaxim/active_metrics/test_coverage)
