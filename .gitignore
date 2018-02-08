@@ -3,6 +3,7 @@
 /_yardoc/
 /coverage/
 /doc/
+/docker-compose.override.yml
 /pkg/
 /spec/reports/
 /tmp/
