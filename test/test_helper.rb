@@ -1,4 +1,10 @@
-$LOAD_PATH.unshift File.expand_path("../../lib", __FILE__)
-require "active_metrics"
+if ENV['ENV'] == 'test'
+  require 'simplecov'
+  SimpleCov.start 'rails'
+  puts 'required simplecov'
+end
 
-require "minitest/autorun"
+$LOAD_PATH.unshift File.expand_path('../../lib', __FILE__)
+require 'active_metrics'
+
+require 'minitest/autorun'
