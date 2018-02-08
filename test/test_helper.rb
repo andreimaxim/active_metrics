@@ -1,4 +1,4 @@
-if ENV['ENV'] == 'test'
+if ENV['COVERAGE']
   require 'simplecov'
   SimpleCov.start 'rails'
   puts 'required simplecov'
