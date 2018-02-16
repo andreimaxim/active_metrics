@@ -1,4 +1,4 @@
-FROM ruby:2.4.2-slim
+FROM ruby:2.5.0
 
 # Bundler options
 #
@@ -15,18 +15,6 @@ ARG BUNDLER_OPTS="--jobs=3 \
 # identical to the variable in your docker-compose.override.yml file,
 # otherwise things might not work as expected.
 ENV APP_DIR="/opt/active_metrics"
-
-# Install required packages
-RUN apt-get update -y \
-      && apt-get install -y --no-install-recommends \
-        git-core \
-        build-essential \
-        libffi-dev \
-        libxml2-dev \
-        libssl-dev \
-        libcurl4-gnutls-dev \
-        apt-utils \
-      && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user
 RUN groupadd -r travis \
