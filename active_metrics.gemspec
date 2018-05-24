@@ -13,9 +13,6 @@ Gem::Specification.new do |spec|
   spec.homepage      = 'https://github.com/andreimaxim/active_metrics'
   spec.license       = 'MIT'
 
-  spec.cert_chain  = ['certs/andreimaxim.pem']
-  spec.signing_key = File.expand_path('~/.ssh/gem-private_key.pem') if $0 =~ /gem\z/
-
   spec.files         = `git ls-files -z`.split("\x0").reject do |f|
     f.match(%r{^(test|spec|features)/})
   end

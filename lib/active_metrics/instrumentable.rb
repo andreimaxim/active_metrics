@@ -24,10 +24,31 @@ module ActiveMetrics
     # complete set of summary statistics over the measures submitted in that
     # interval.
     #
+    # The `measure` method also accepts a block of code which will automatically
+    # measure the amount of time spent running that block:
+    #
+    #     measure 'foo.bar.baz' do
+    #       Foo.bar #=> 'baz'
+    #     end
+    #
+    # For convenience, when `measure` is used with a block it will return the
+    # value returned by the block.
+    #
     # @param event [String] The name of the event
     # @param value [Integer, String] The value measured.
     def measure(event, value = 0)
-      ActiveMetrics::Collector.record(event, { metric: 'measure', value: value })
+      if block_given?
+        time = Time.now
+        # Store the value returned by the block for future reference
+        value = yield
+        delta = Time.now - time
+
+        ActiveMetrics::Collector.record(event, { metric: 'measure', value: delta })
+
+        value
+      else
+        ActiveMetrics::Collector.record(event, { metric: 'measure', value: value })
+      end
     end
 
     # Sample metrics are used to convey simple key/numerical value pairs when
