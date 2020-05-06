@@ -5,6 +5,14 @@ module ActiveMetrics
 
     class << self
 
+      # Should the metrics be silent?
+      #
+      # Useful especially in QA or development environments, where you'll
+      # might not want your logs to be filled with various metrics.
+      def silent?
+        [1, '1', 'true'].include?(ENV['SILENT_METRICS'])
+      end
+
       # Start subscribing to the metrics-related events.
       def attach
         ActiveSupport::Notifications.subscribe(/#{PREFIX}/i) do |name, _, _, _, data|
@@ -25,7 +33,7 @@ module ActiveMetrics
         value  = data[:value]
         metric = data[:metric]
 
-        $stdout.puts "#{metric}##{key}=#{value}"
+        $stdout.puts "#{metric}##{key}=#{value}" unless silent?
       end
 
       # Record an event

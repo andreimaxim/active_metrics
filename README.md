@@ -28,7 +28,7 @@ require 'active_metrics'
 class Foo
 
   include ActiveMetrics::Instrumentable
-  
+
   def bar
     count 'method.bar'
   end
@@ -43,6 +43,12 @@ Available methods:
 * `sample`: simple key/numerical value pair
 
 Be mindful of any kind of conflicts when including the module in your class.
+
+### Disabling the metrics
+
+For various environments (development and QA), the metrics can be a bit too
+verbose and have very little value. In those cases, the metrics can be disabled
+using by using the `SILENT_METRICS=1` environment variable.
 
 ## Contributing
 
