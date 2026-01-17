@@ -4,6 +4,7 @@
 /coverage/
 /doc/
 /docker-compose.override.yml
+/Gemfile.lock
 /pkg/
 /spec/reports/
 /tmp/
