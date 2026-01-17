@@ -14,6 +14,8 @@ Gem::Specification.new do |spec|
   spec.homepage      = "https://github.com/andreimaxim/active_metrics"
   spec.license       = "MIT"
 
+  spec.required_ruby_version = ">= 3.2"
+
   spec.files         = `git ls-files -z`.split("\x0").reject do |f|
     f.match(%r{^(test|spec|features)/})
   end
@@ -21,6 +23,7 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = [ "lib" ]
 
+  spec.add_development_dependency "appraisal"
   spec.add_development_dependency "debug"
   spec.add_development_dependency "minitest", "~> 5.0"
   spec.add_development_dependency "rake", "~> 13.0"
@@ -28,10 +31,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rubocop-rails-omakase"
   spec.add_development_dependency "simplecov", "~> 0.15"
 
-  # This is a bit sketchy for now as we generally need just
-  # ActiveSupport::Notifications but specifying a fixed version might create
-  # issues with various Rails installations (AS::N v4 vs Rails v5 for example)
-  #
-  # This will have to do for now, unless somebody has a better idea.
-  spec.add_dependency "activesupport", ">= 3.0.0"
+  spec.add_dependency "activesupport", ">= 7.2"
 end
