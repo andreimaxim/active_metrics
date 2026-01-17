@@ -2,7 +2,6 @@ module ActiveMetrics
   ##
   # Custom metrics for Librato
   module Instrumentable
-
     # Count log lines are used to submit increments to Librato.
     #
     # You can submit increments as frequently as desired and every minute the
@@ -11,7 +10,7 @@ module ActiveMetrics
     # @param event [String] The name of the event
     # @param number [Integer] The number to increment the current count (defaults to 1)
     def count(event, number = 1)
-      ActiveMetrics::Collector.record(event, { metric: 'count', value: number })
+      ActiveMetrics::Collector.record(event, { metric: "count", value: number })
     end
 
     # Measure log lines are used to submit individual measurements that comprise
@@ -43,11 +42,11 @@ module ActiveMetrics
         value = yield
         delta = Time.now - time
 
-        ActiveMetrics::Collector.record(event, { metric: 'measure', value: delta })
+        ActiveMetrics::Collector.record(event, { metric: "measure", value: delta })
 
         value
       else
-        ActiveMetrics::Collector.record(event, { metric: 'measure', value: value })
+        ActiveMetrics::Collector.record(event, { metric: "measure", value: value })
       end
     end
 
@@ -61,7 +60,7 @@ module ActiveMetrics
     # @param key [String] The name of the sample
     # @param value [Object] The value of the sample
     def sample(key, value)
-      ActiveMetrics::Collector.record(key, { metric: 'sample', value: value })
+      ActiveMetrics::Collector.record(key, { metric: "sample", value: value })
     end
   end
 end

@@ -1,16 +1,14 @@
 module ActiveMetrics
   class Collector
-
-    PREFIX = 'com.active_metrics'.freeze
+    PREFIX = "com.active_metrics".freeze
 
     class << self
-
       # Should the metrics be silent?
       #
       # Useful especially in QA or development environments, where you'll
       # might not want your logs to be filled with various metrics.
       def silent?
-        [1, '1', 'true'].include?(ENV['SILENT_METRICS'])
+        [ 1, "1", "true" ].include?(ENV["SILENT_METRICS"])
       end
 
       # Start subscribing to the metrics-related events.
@@ -29,7 +27,7 @@ module ActiveMetrics
       # @param name [String] The name of the event being measured
       # @param data [Hash] a Hash with type of metric and the value to be recorded
       def deliver(name, data = {})
-        key    = name.gsub(PREFIX, '')
+        key    = name.gsub(PREFIX, "")
         value  = data[:value]
         metric = data[:metric]
 
