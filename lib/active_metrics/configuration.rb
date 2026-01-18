@@ -14,6 +14,8 @@ module ActiveMetrics
       DEFAULTS.each do |key, value|
         instance_variable_set(:"@#{key}", value)
       end
+
+      @silent = silent_metrics? || test_environment?
     end
 
     DEFAULTS.each_key do |key|
@@ -28,6 +30,28 @@ module ActiveMetrics
       define_method(:"#{key}=") do |value|
         instance_variable_set(:"@#{key}", value)
       end
+    end
+
+    def silent(value = nil)
+      if value.nil?
+        @silent
+      else
+        @silent = value
+      end
+    end
+
+    def silent=(value)
+      @silent = value
+    end
+
+    private
+
+    def test_environment?
+      ENV["RACK_ENV"] == "test" || ENV["RAILS_ENV"] == "test"
+    end
+
+    def silent_metrics?
+      %w[1 true].include?(ENV["SILENT_METRICS"])
     end
   end
 end

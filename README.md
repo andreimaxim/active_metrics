@@ -56,9 +56,16 @@ Be mindful of any kind of conflicts when including the module in your class.
 
 ### Disabling Metrics
 
-For various environments (development and QA), the metrics can be a bit too
-verbose and have very little value. In those cases, the metrics can be disabled
-by using the `SILENT_METRICS=1` environment variable.
+Metrics are automatically silenced when `RACK_ENV` or `RAILS_ENV` is set to
+`test`, or when `SILENT_METRICS=1` (or `SILENT_METRICS=true`).
+
+You can also configure this explicitly:
+
+```ruby
+ActiveMetrics.setup do
+  silent true  # or false to force output
+end
+```
 
 ## Contributing
 

@@ -51,4 +51,54 @@ class ActiveMetrics::ConfigurationTest < ActiveSupport::TestCase
     @config.max_line_length = 2048
     assert_equal 2048, @config.max_line_length
   end
+
+  test "silent is writable" do
+    @config.silent = true
+    assert_equal true, @config.silent
+  end
+
+  test "silent defaults to true when RACK_ENV is test" do
+    with_env("RACK_ENV" => "test", "RAILS_ENV" => nil) do
+      config = ActiveMetrics::Configuration.new
+      assert_equal true, config.silent
+    end
+  end
+
+  test "silent defaults to true when RAILS_ENV is test" do
+    with_env("RACK_ENV" => nil, "RAILS_ENV" => "test") do
+      config = ActiveMetrics::Configuration.new
+      assert_equal true, config.silent
+    end
+  end
+
+  test "silent defaults to false when not in test environment" do
+    with_env("RACK_ENV" => "production", "RAILS_ENV" => nil, "SILENT_METRICS" => nil) do
+      config = ActiveMetrics::Configuration.new
+      assert_equal false, config.silent
+    end
+  end
+
+  test "silent defaults to true when SILENT_METRICS is 1" do
+    with_env("RACK_ENV" => "production", "RAILS_ENV" => nil, "SILENT_METRICS" => "1") do
+      config = ActiveMetrics::Configuration.new
+      assert_equal true, config.silent
+    end
+  end
+
+  test "silent defaults to true when SILENT_METRICS is true" do
+    with_env("RACK_ENV" => "production", "RAILS_ENV" => nil, "SILENT_METRICS" => "true") do
+      config = ActiveMetrics::Configuration.new
+      assert_equal true, config.silent
+    end
+  end
+
+  private
+
+  def with_env(env_vars)
+    original = env_vars.keys.to_h { |k| [ k, ENV[k] ] }
+    env_vars.each { |k, v| ENV[k] = v }
+    yield
+  ensure
+    original.each { |k, v| ENV[k] = v }
+  end
 end
