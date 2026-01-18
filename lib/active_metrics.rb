@@ -10,8 +10,8 @@ require "active_metrics/instrumentable"
 module ActiveMetrics
   extend self
 
-  def setup(&block)
-    config.instance_eval(&block) if block_given?
+  def setup
+    yield(config) if block_given?
   end
 
   private

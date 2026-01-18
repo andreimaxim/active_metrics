@@ -15,8 +15,8 @@ class ActiveMetricsTest < ActiveSupport::TestCase
 
   test "setup works with a block" do
     assert_nothing_raised do
-      ActiveMetrics.setup do
-        interval 10.0
+      ActiveMetrics.setup do |config|
+        config.interval = 10.0
       end
     end
   end
