@@ -8,8 +8,8 @@ class ActiveMetrics::CollectorTest < ActiveSupport::TestCase
     $stdout.stubs(:puts).with { |line| @output << line }
     @config = ActiveMetrics::Configuration.new
 
-    ActiveMetrics::Collector.stubs(:bucket).returns(ActiveMetrics::Bucket.new)
     ActiveMetrics.stubs(:config).returns(@config)
+    ActiveMetrics::Collector.instance.reset
 
     @subscriber = ActiveMetrics::Collector.attach
   end
@@ -56,6 +56,24 @@ class ActiveMetrics::CollectorTest < ActiveSupport::TestCase
     ActiveMetrics::Collector.record("requests", metric: "count", value: 5)
     sleep(0.002)
     ActiveMetrics::Collector.record("other", metric: "count", value: 1)
+
+    output = @output.join
+    assert_includes output, "count#requests=5.0"
+    assert_includes output, "count#other=1.0"
+  end
+
+  test "interval mode flushes automatically without new events" do
+    skip "pending background flush implementation"
+
+    @config.batching_mode = :interval
+    @config.interval = 0.01
+    @config.silent = false
+
+    ActiveMetrics::Collector.record("requests", metric: "count", value: 5)
+
+    assert_empty @output
+
+    sleep(0.02)
 
     assert_includes @output.join, "count#requests=5.0"
   end

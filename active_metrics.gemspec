@@ -33,4 +33,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "simplecov", "~> 0.15"
 
   spec.add_dependency "activesupport", ">= 7.2"
+  spec.add_dependency "concurrent-ruby", ">= 1.2"
 end

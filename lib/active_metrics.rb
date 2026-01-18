@@ -30,5 +30,5 @@ end
 # Flush remaining metrics on exit (guarded for reloadable environments)
 unless defined?(@_active_metrics_at_exit_registered)
   @_active_metrics_at_exit_registered = true
-  at_exit { ActiveMetrics::Collector.flush rescue nil }
+  at_exit { ActiveMetrics::Collector.instance.stop rescue nil }
 end
