@@ -3,7 +3,12 @@
 module ActiveMetrics
   class Configuration
     attr_accessor :batching_mode, :interval, :max_buffer_size, :overflow_policy,
-                  :max_line_length, :silent
+                  :max_line_length
+    attr_writer :silent
+
+    def silent?
+      @silent
+    end
 
     def initialize
       @batching_mode = :immediate

@@ -1,47 +1,21 @@
+# frozen_string_literal: true
+
 module ActiveMetrics
   class Collector
     PREFIX = "com.active_metrics".freeze
 
     class << self
-      # Should the metrics be silent?
-      #
-      # Useful especially in QA or development environments, where you'll
-      # might not want your logs to be filled with various metrics.
       def silent?
-        [ 1, "1", "true" ].include?(ENV["SILENT_METRICS"])
+        ActiveMetrics.silent?
       end
 
-      # Start subscribing to the metrics-related events.
       def attach
         ActiveSupport::Notifications.subscribe(/#{PREFIX}/i) do |name, _, _, _, data|
           deliver(name, data)
         end
       end
 
-      # Deliver a metric to Librato
-      #
-      # According to the Heroku DevCenter there is already a tight integration
-      # between Heroku logs and Librato so simply using `$stdout.puts` will be
-      # enough, as long as a specific format is used.
-      #
-      # @param name [String] The name of the event being measured
-      # @param data [Hash] a Hash with type of metric and the value to be recorded
-      def deliver(name, data = {})
-        key    = name.gsub(PREFIX, "")
-        value  = data[:value]
-        metric = data[:metric]
-
-        $stdout.puts "#{metric}##{key}=#{value}" unless silent?
-      end
-
-      # Record an event
-      #
-      # @param event [String] The name of the event
-      # @param payload [Hash] A hash that contains the event-related data.
       def record(event, payload = {})
-        # Add a prefix to all events so things broadcasted using this method
-        # will not get picked up by possibly other `ActiveSupport::Notifications`
-        # subscribers.
         name = "#{PREFIX}#{event}"
 
         if block_given?
@@ -49,6 +23,79 @@ module ActiveMetrics
         else
           ActiveSupport::Notifications.instrument(name, payload)
         end
+      end
+
+      def deliver(name, data = {})
+        return if silent?
+
+        key = name.sub(/\A#{PREFIX}/, "")
+        value = data[:value]
+        metric = data[:metric]
+
+        case ActiveMetrics.batching_mode
+        when :immediate
+          write_immediate(metric, key, value)
+        when :interval
+          flush_if_due
+          bucket.add(metric, key, value)
+          check_overflow
+        end
+      end
+
+      def flush
+        return if bucket.empty?
+
+        formatter.format_lines(bucket).each do |line|
+          $stdout.puts(line)
+        end
+
+        bucket.clear
+        @last_flush_at = monotonic_now
+      end
+
+      def reset
+        @bucket = nil
+        @formatter = nil
+        @last_flush_at = nil
+      end
+
+      private
+
+      def bucket
+        @bucket ||= Bucket.new
+      end
+
+      def formatter
+        @formatter ||= Formatter.new(
+          max_line_length: ActiveMetrics.max_line_length
+        )
+      end
+
+      def last_flush_at
+        @last_flush_at ||= monotonic_now
+      end
+
+      def flush_if_due
+        interval = ActiveMetrics.interval
+        return if interval.to_f <= 0
+        return if (monotonic_now - last_flush_at) < interval
+
+        flush
+      end
+
+      def check_overflow
+        max = ActiveMetrics.max_buffer_size
+        return if max <= 0 || bucket.event_count < max
+
+        flush
+      end
+
+      def monotonic_now
+        Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      end
+
+      def write_immediate(metric, key, value)
+        $stdout.puts("#{metric}##{key}=#{value}")
       end
     end
   end

@@ -54,41 +54,41 @@ class ActiveMetrics::ConfigurationTest < ActiveSupport::TestCase
 
   test "silent is writable" do
     @config.silent = true
-    assert_equal true, @config.silent
+    assert_equal true, @config.silent?
   end
 
   test "silent defaults to true when RACK_ENV is test" do
     with_env("RACK_ENV" => "test", "RAILS_ENV" => nil) do
       config = ActiveMetrics::Configuration.new
-      assert_equal true, config.silent
+      assert_equal true, config.silent?
     end
   end
 
   test "silent defaults to true when RAILS_ENV is test" do
     with_env("RACK_ENV" => nil, "RAILS_ENV" => "test") do
       config = ActiveMetrics::Configuration.new
-      assert_equal true, config.silent
+      assert_equal true, config.silent?
     end
   end
 
   test "silent defaults to false when not in test environment" do
     with_env("RACK_ENV" => "production", "RAILS_ENV" => nil, "SILENT_METRICS" => nil) do
       config = ActiveMetrics::Configuration.new
-      assert_equal false, config.silent
+      assert_equal false, config.silent?
     end
   end
 
   test "silent defaults to true when SILENT_METRICS is 1" do
     with_env("RACK_ENV" => "production", "RAILS_ENV" => nil, "SILENT_METRICS" => "1") do
       config = ActiveMetrics::Configuration.new
-      assert_equal true, config.silent
+      assert_equal true, config.silent?
     end
   end
 
   test "silent defaults to true when SILENT_METRICS is true" do
     with_env("RACK_ENV" => "production", "RAILS_ENV" => nil, "SILENT_METRICS" => "true") do
       config = ActiveMetrics::Configuration.new
-      assert_equal true, config.silent
+      assert_equal true, config.silent?
     end
   end
 
