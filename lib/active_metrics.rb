@@ -6,7 +6,7 @@ require "forwardable"
 require "active_metrics/version"
 require "active_metrics/configuration"
 require "active_metrics/bucket"
-require "active_metrics/formatter"
+
 require "active_metrics/collector"
 require "active_metrics/instrumentable"
 
@@ -18,7 +18,7 @@ module ActiveMetrics
     yield(config) if block_given?
   end
 
-  def_delegators :config, :batching_mode, :interval, :max_buffer_size, :max_line_length, :silent?
+  def_delegators :config, :batching_mode, :interval, :max_buffer_size, :silent?
 
   private
 

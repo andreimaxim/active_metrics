@@ -4,111 +4,127 @@ require "test_helper"
 
 class ActiveMetrics::CollectorTest < ActiveSupport::TestCase
   def setup
-    @original_stdout = $stdout
-    $stdout = StringIO.new
-    ActiveMetrics::Collector.reset
+    @output = []
+    $stdout.stubs(:puts).with { |line| @output << line }
+    @config = ActiveMetrics::Configuration.new
+
+    ActiveMetrics::Collector.stubs(:bucket).returns(ActiveMetrics::Bucket.new)
+    ActiveMetrics.stubs(:config).returns(@config)
+
+    @subscriber = ActiveMetrics::Collector.attach
   end
 
   def teardown
-    $stdout = @original_stdout
-    ActiveMetrics::Collector.reset
-    # Reset config by clearing the instance variable
-    ActiveMetrics.instance_variable_set(:@config, nil)
+    ActiveSupport::Notifications.unsubscribe(@subscriber)
   end
 
-  # Immediate mode tests (default)
-
   test "immediate mode outputs metric directly" do
-    with_config(batching_mode: :immediate, silent: false) do
-      ActiveMetrics::Collector.deliver("com.active_metrics.requests", { metric: "count", value: 5 })
+    @config.batching_mode = :immediate
+    @config.silent = false
 
-      assert_equal "count#.requests=5\n", $stdout.string
-    end
+    ActiveMetrics::Collector.record("requests", metric: "count", value: 5)
+
+    assert_equal [ "count#requests=5" ], @output
   end
 
   test "silent mode suppresses output" do
-    with_config(batching_mode: :immediate, silent: true) do
-      ActiveMetrics::Collector.deliver("com.active_metrics.requests", { metric: "count", value: 5 })
+    @config.batching_mode = :immediate
+    @config.silent = true
 
-      assert_empty $stdout.string
-    end
+    ActiveMetrics::Collector.record("requests", metric: "count", value: 5)
+
+    assert_empty @output
   end
 
   # Interval mode tests
 
   test "interval mode buffers metrics" do
-    with_config(batching_mode: :interval, interval: 60.0, silent: false) do
-      ActiveMetrics::Collector.deliver("com.active_metrics.requests", { metric: "count", value: 5 })
+    @config.batching_mode = :interval
+    @config.interval = 60.0
+    @config.silent = false
 
-      assert_empty $stdout.string
-    end
+    ActiveMetrics::Collector.record("requests", metric: "count", value: 5)
+
+    assert_empty @output
   end
 
   test "interval mode flushes when interval elapsed" do
-    with_config(batching_mode: :interval, interval: 0.001, silent: false) do
-      ActiveMetrics::Collector.deliver("com.active_metrics.requests", { metric: "count", value: 5 })
-      sleep(0.002)
-      ActiveMetrics::Collector.deliver("com.active_metrics.other", { metric: "count", value: 1 })
+    @config.batching_mode = :interval
+    @config.interval = 0.001
+    @config.silent = false
 
-      assert_includes $stdout.string, "count#.requests=5.0"
-    end
+    ActiveMetrics::Collector.record("requests", metric: "count", value: 5)
+    sleep(0.002)
+    ActiveMetrics::Collector.record("other", metric: "count", value: 1)
+
+    assert_includes @output.join, "count#requests=5.0"
   end
 
   test "flush outputs buffered metrics" do
-    with_config(batching_mode: :interval, interval: 60.0, silent: false) do
-      ActiveMetrics::Collector.deliver("com.active_metrics.requests", { metric: "count", value: 5 })
-      ActiveMetrics::Collector.deliver("com.active_metrics.db.query", { metric: "measure", value: 12 })
+    @config.batching_mode = :interval
+    @config.interval = 60.0
+    @config.silent = false
 
-      assert_empty $stdout.string
+    ActiveMetrics::Collector.record("requests", metric: "count", value: 5)
+    ActiveMetrics::Collector.record("db.query", metric: "measure", value: 12)
 
-      ActiveMetrics::Collector.flush
+    assert_empty @output
 
-      assert_includes $stdout.string, "count#.requests=5.0"
-      assert_includes $stdout.string, "measure#.db.query=12.0"
-    end
+    ActiveMetrics::Collector.flush
+
+    output = @output.join
+    assert_includes output, "count#requests=5.0"
+    assert_includes output, "measure#db.query=12.0"
   end
 
   test "flush does nothing when bucket is empty" do
-    with_config(batching_mode: :interval, silent: false) do
-      ActiveMetrics::Collector.flush
+    @config.batching_mode = :interval
+    @config.silent = false
 
-      assert_empty $stdout.string
-    end
+    ActiveMetrics::Collector.flush
+
+    assert_empty @output
   end
 
   test "flush clears the bucket" do
-    with_config(batching_mode: :interval, interval: 60.0, silent: false) do
-      ActiveMetrics::Collector.deliver("com.active_metrics.requests", { metric: "count", value: 5 })
-      ActiveMetrics::Collector.flush
+    @config.batching_mode = :interval
+    @config.interval = 60.0
+    @config.silent = false
 
-      $stdout.truncate(0)
-      $stdout.rewind
+    ActiveMetrics::Collector.record("requests", metric: "count", value: 5)
+    ActiveMetrics::Collector.flush
 
-      ActiveMetrics::Collector.flush
+    @output.clear
 
-      assert_empty $stdout.string
-    end
+    ActiveMetrics::Collector.flush
+
+    assert_empty @output
   end
 
   test "overflow triggers flush when max_buffer_size reached" do
-    with_config(batching_mode: :interval, interval: 60.0, max_buffer_size: 3, silent: false) do
-      ActiveMetrics::Collector.deliver("com.active_metrics.m1", { metric: "count", value: 1 })
-      ActiveMetrics::Collector.deliver("com.active_metrics.m2", { metric: "count", value: 2 })
+    @config.batching_mode = :interval
+    @config.interval = 60.0
+    @config.max_buffer_size = 3
+    @config.silent = false
 
-      assert_empty $stdout.string
+    ActiveMetrics::Collector.record("m1", metric: "count", value: 1)
+    ActiveMetrics::Collector.record("m2", metric: "count", value: 2)
 
-      ActiveMetrics::Collector.deliver("com.active_metrics.m3", { metric: "count", value: 3 })
+    assert_empty @output
 
-      refute_empty $stdout.string
-    end
+    ActiveMetrics::Collector.record("m3", metric: "count", value: 3)
+
+    assert_not_empty @output
   end
 
-  test "key extraction removes prefix correctly" do
-    with_config(batching_mode: :immediate, silent: false) do
-      ActiveMetrics::Collector.deliver("com.active_metrics.user.login", { metric: "count", value: 1 })
+  test "deliver strips the ActiveMetrics prefix from the event name" do
+    @config.batching_mode = :immediate
+    @config.silent = false
 
-      assert_includes $stdout.string, "count#.user.login=1"
-    end
+    prefix = ActiveMetrics::Collector::PREFIX
+    ActiveMetrics::Collector.deliver("#{prefix}user.login", metric: "count", value: 1)
+
+    assert_equal [ "count#user.login=1" ], @output
   end
 
   test "record instruments via ActiveSupport::Notifications" do
@@ -117,12 +133,10 @@ class ActiveMetrics::CollectorTest < ActiveSupport::TestCase
       events << { name: name, data: data }
     end
 
-    ActiveMetrics::Collector.record(".test.event", { metric: "count", value: 1 })
+    ActiveMetrics::Collector.record("test.event", metric: "count", value: 1)
 
     assert_equal 1, events.size
-    assert_equal "com.active_metrics.test.event", events.first[:name]
-  ensure
-    ActiveSupport::Notifications.unsubscribe(/com.active_metrics/)
+    assert_equal "com.active_metricstest.event", events.first[:name]
   end
 
   test "record with block instruments the block" do
@@ -131,32 +145,19 @@ class ActiveMetrics::CollectorTest < ActiveSupport::TestCase
       events << { name: name, duration: finish - start }
     end
 
-    result = ActiveMetrics::Collector.record(".test.event", { metric: "measure" }) { sleep(0.01); 42 }
+    result = ActiveMetrics::Collector.record("test.event", metric: "measure") { sleep(0.01); 42 }
 
     assert_equal 42, result
     assert_equal 1, events.size
     assert_operator events.first[:duration], :>=, 0.01
-  ensure
-    ActiveSupport::Notifications.unsubscribe(/com.active_metrics/)
   end
 
   test "attach subscribes to ActiveSupport::Notifications" do
-    with_config(batching_mode: :immediate, silent: false) do
-      ActiveMetrics::Collector.attach
-      ActiveSupport::Notifications.instrument("com.active_metrics.attached", { metric: "count", value: 1 })
+    @config.batching_mode = :immediate
+    @config.silent = false
 
-      assert_includes $stdout.string, "count#.attached=1"
-    end
-  ensure
-    ActiveSupport::Notifications.unsubscribe(/com.active_metrics/)
-  end
+    ActiveSupport::Notifications.instrument("com.active_metrics.attached", metric: "count", value: 1)
 
-  private
-
-  def with_config(**options)
-    ActiveMetrics.setup do |config|
-      options.each { |key, value| config.public_send("#{key}=", value) }
-    end
-    yield
+    assert_equal [ "count#.attached=1" ], @output
   end
 end

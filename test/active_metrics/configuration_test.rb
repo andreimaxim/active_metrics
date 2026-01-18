@@ -23,10 +23,6 @@ class ActiveMetrics::ConfigurationTest < ActiveSupport::TestCase
     assert_equal :drop_newest, @config.overflow_policy
   end
 
-  test "default max_line_length is 1024" do
-    assert_equal 1024, @config.max_line_length
-  end
-
   test "batching_mode is writable" do
     @config.batching_mode = :interval
     assert_equal :interval, @config.batching_mode
@@ -45,11 +41,6 @@ class ActiveMetrics::ConfigurationTest < ActiveSupport::TestCase
   test "overflow_policy is writable" do
     @config.overflow_policy = :drop_oldest
     assert_equal :drop_oldest, @config.overflow_policy
-  end
-
-  test "max_line_length is writable" do
-    @config.max_line_length = 2048
-    assert_equal 2048, @config.max_line_length
   end
 
   test "silent is writable" do

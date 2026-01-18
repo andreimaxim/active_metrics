@@ -45,30 +45,22 @@ module ActiveMetrics
       def flush
         return if bucket.empty?
 
-        formatter.format_lines(bucket).each do |line|
-          $stdout.puts(line)
-        end
+        tokens = bucket.metrics.map { |metric, key, value| "#{metric}##{key}=#{value}" }
+        $stdout.puts(tokens.join(" ")) unless tokens.empty?
 
         bucket.clear
         @last_flush_at = monotonic_now
       end
 
+      private
+
       def reset
         @bucket = nil
-        @formatter = nil
         @last_flush_at = nil
       end
 
-      private
-
       def bucket
         @bucket ||= Bucket.new
-      end
-
-      def formatter
-        @formatter ||= Formatter.new(
-          max_line_length: ActiveMetrics.max_line_length
-        )
       end
 
       def last_flush_at
@@ -85,7 +77,7 @@ module ActiveMetrics
 
       def check_overflow
         max = ActiveMetrics.max_buffer_size
-        return if max <= 0 || bucket.event_count < max
+        return if max <= 0 || bucket.size < max
 
         flush
       end

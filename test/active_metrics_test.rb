@@ -4,7 +4,7 @@ require "test_helper"
 
 class ActiveMetricsTest < ActiveSupport::TestCase
   test "has a version number" do
-    refute_nil ::ActiveMetrics::VERSION
+    assert_not_nil ::ActiveMetrics::VERSION
   end
 
   test "setup works without a block" do

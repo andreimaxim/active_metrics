@@ -8,97 +8,72 @@ class ActiveMetrics::InstrumentableTest < ActiveSupport::TestCase
   end
 
   def setup
-    @original_stdout = $stdout
-    $stdout = StringIO.new
-    ActiveMetrics::Collector.reset
-    ActiveSupport::Notifications.unsubscribe(/com.active_metrics/)
+    @output = []
+    $stdout.stubs(:puts).with { |line| @output << line }
+    @config = ActiveMetrics::Configuration.new
+    @config.batching_mode = :immediate
+    @config.silent = false
+    ActiveMetrics::Collector.stubs(:bucket).returns(ActiveMetrics::Bucket.new)
+    ActiveMetrics.stubs(:config).returns(@config)
+    @subscriber = ActiveMetrics::Collector.attach
     @subject = TestClass.new
   end
 
   def teardown
-    $stdout = @original_stdout
-    ActiveMetrics::Collector.reset
-    ActiveMetrics.instance_variable_set(:@config, nil)
-    ActiveSupport::Notifications.unsubscribe(/com.active_metrics/)
+    ActiveSupport::Notifications.unsubscribe(@subscriber)
   end
 
   # count tests
 
   test "count records a count metric with default value of 1" do
-    with_immediate_mode do
-      @subject.count("requests")
+    @subject.count("requests")
 
-      assert_includes $stdout.string, "count#requests=1"
-    end
+    assert_includes @output.join, "count#requests=1"
   end
 
   test "count records a count metric with custom value" do
-    with_immediate_mode do
-      @subject.count("requests", 5)
+    @subject.count("requests", 5)
 
-      assert_includes $stdout.string, "count#requests=5"
-    end
+    assert_includes @output.join, "count#requests=5"
   end
 
   # measure tests
 
   test "measure records a measure metric with explicit value" do
-    with_immediate_mode do
-      @subject.measure("response_time", 150)
+    @subject.measure("response_time", 150)
 
-      assert_includes $stdout.string, "measure#response_time=150"
-    end
+    assert_includes @output.join, "measure#response_time=150"
   end
 
   test "measure with block measures elapsed time" do
-    with_immediate_mode do
-      @subject.measure("slow_operation") { sleep(0.01) }
+    @subject.measure("slow_operation") { sleep(0.01) }
 
-      assert_match(/measure#slow_operation=0\.0\d+/, $stdout.string)
-    end
+    assert_match(/measure#slow_operation=0\.0\d+/, @output.join)
   end
 
   test "measure with block returns the block value" do
-    with_immediate_mode do
-      result = @subject.measure("computation") { 42 }
+    result = @subject.measure("computation") { 42 }
 
-      assert_equal 42, result
-    end
+    assert_equal 42, result
   end
 
   test "measure without block uses default value of 0" do
-    with_immediate_mode do
-      @subject.measure("empty")
+    @subject.measure("empty")
 
-      assert_includes $stdout.string, "measure#empty=0"
-    end
+    assert_includes @output.join, "measure#empty=0"
   end
 
   # sample tests
 
   test "sample records a sample metric" do
-    with_immediate_mode do
-      @subject.sample("memory_usage", 1024)
+    @subject.sample("memory_usage", 1024)
 
-      assert_includes $stdout.string, "sample#memory_usage=1024"
-    end
+    assert_includes @output.join, "sample#memory_usage=1024"
   end
 
   test "sample records a sample metric with string value" do
-    with_immediate_mode do
-      @subject.sample("version", "1.0.0")
+    @subject.sample("version", "1.0.0")
 
-      assert_includes $stdout.string, "sample#version=1.0.0"
-    end
-  end
-
-  private
-
-  def with_immediate_mode
-    ActiveMetrics.setup { |c| c.batching_mode = :immediate; c.silent = false }
-    ActiveMetrics::Collector.attach
-    yield
-  ensure
-    ActiveSupport::Notifications.unsubscribe(/com.active_metrics/)
+    assert_includes @output.join, "sample#version=1.0.0"
   end
 end
