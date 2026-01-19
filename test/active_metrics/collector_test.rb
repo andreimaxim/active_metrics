@@ -9,9 +9,9 @@ class ActiveMetrics::CollectorTest < ActiveSupport::TestCase
     @config = ActiveMetrics::Configuration.new
 
     ActiveMetrics.stubs(:config).returns(@config)
-    ActiveMetrics::Collector.instance.reset
+    ActiveMetrics.stubs(:collector).returns(ActiveMetrics::Collector.new)
 
-    @subscriber = ActiveMetrics::Collector.attach
+    @subscriber = ActiveMetrics.collector.attach
   end
 
   def teardown
@@ -35,8 +35,6 @@ class ActiveMetrics::CollectorTest < ActiveSupport::TestCase
 
     assert_empty @output
   end
-
-  # Interval mode tests
 
   test "interval mode buffers metrics" do
     @config.batching_mode = :interval
@@ -88,7 +86,7 @@ class ActiveMetrics::CollectorTest < ActiveSupport::TestCase
 
     assert_empty @output
 
-    ActiveMetrics::Collector.flush
+    ActiveMetrics.collector.flush
 
     output = @output.join
     assert_includes output, "count#requests=5.0"
@@ -99,7 +97,7 @@ class ActiveMetrics::CollectorTest < ActiveSupport::TestCase
     @config.batching_mode = :interval
     @config.silent = false
 
-    ActiveMetrics::Collector.flush
+    ActiveMetrics.collector.flush
 
     assert_empty @output
   end
@@ -110,29 +108,13 @@ class ActiveMetrics::CollectorTest < ActiveSupport::TestCase
     @config.silent = false
 
     ActiveMetrics::Collector.record("requests", metric: "count", value: 5)
-    ActiveMetrics::Collector.flush
+    ActiveMetrics.collector.flush
 
     @output.clear
 
-    ActiveMetrics::Collector.flush
+    ActiveMetrics.collector.flush
 
     assert_empty @output
-  end
-
-  test "overflow triggers flush when max_buffer_size reached" do
-    @config.batching_mode = :interval
-    @config.interval = 60.0
-    @config.max_buffer_size = 3
-    @config.silent = false
-
-    ActiveMetrics::Collector.record("m1", metric: "count", value: 1)
-    ActiveMetrics::Collector.record("m2", metric: "count", value: 2)
-
-    assert_empty @output
-
-    ActiveMetrics::Collector.record("m3", metric: "count", value: 3)
-
-    assert_not_empty @output
   end
 
   test "deliver strips the ActiveMetrics prefix from the event name" do
@@ -140,7 +122,7 @@ class ActiveMetrics::CollectorTest < ActiveSupport::TestCase
     @config.silent = false
 
     prefix = ActiveMetrics::Collector::PREFIX
-    ActiveMetrics::Collector.deliver("#{prefix}user.login", metric: "count", value: 1)
+    ActiveMetrics.collector.deliver("#{prefix}user.login", metric: "count", value: 1)
 
     assert_equal [ "count#user.login=1" ], @output
   end
@@ -177,5 +159,17 @@ class ActiveMetrics::CollectorTest < ActiveSupport::TestCase
     ActiveSupport::Notifications.instrument("com.active_metrics.attached", metric: "count", value: 1)
 
     assert_equal [ "count#.attached=1" ], @output
+  end
+
+  test "class method attach delegates to collector instance" do
+    ActiveSupport::Notifications.unsubscribe(@subscriber)
+
+    collector = ActiveMetrics::Collector.new
+    ActiveMetrics.stubs(:collector).returns(collector)
+
+    subscriber = ActiveMetrics::Collector.attach
+
+    assert_not_nil subscriber
+    ActiveSupport::Notifications.unsubscribe(subscriber)
   end
 end

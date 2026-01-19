@@ -3,43 +3,60 @@
 module ActiveMetrics
   class Bucket
     def initialize
-      @counts = Hash.new(0.0)
-      @measures = Hash.new { |h, k| h[k] = [] }
-      @samples = {}
+      @mutex = Mutex.new
+      @entries = []
     end
 
     def add(metric, key, value)
-      metric = metric.to_s
+      type = metric.to_sym
       v = value.to_f
 
-      case metric
-      when "count"
-        @counts[key] += v
-      when "measure"
-        @measures[key] << v
-      when "sample"
-        @samples[key] = v
+      @mutex.synchronize do
+        case type
+        when :count
+          increment(key, v)
+        when :measure
+          append(key, v)
+        when :sample
+          replace(key, v)
+        end
       end
     end
 
-    def size
-      @counts.size + @measures.values.sum(&:size) + @samples.size
-    end
-
     def empty?
-      size == 0
+      @mutex.synchronize { @entries.empty? }
     end
 
     def clear
-      @counts.clear
-      @measures.clear
-      @samples.clear
+      @mutex.synchronize { @entries.clear }
     end
 
-    def metrics
-      @counts.map { |k, v| [ "count", k, v ] } +
-        @measures.flat_map { |k, vs| vs.map { |v| [ "measure", k, v ] } } +
-        @samples.map { |k, v| [ "sample", k, v ] }
+    def drain
+      entries = nil
+      @mutex.synchronize do
+        entries = @entries
+        @entries = []
+      end
+      entries
+    end
+
+    private
+
+    def increment(key, value)
+      upsert("count", key, value) { |entry| entry[2] += value }
+    end
+
+    def append(key, value)
+      @entries << [ "measure", key, value ]
+    end
+
+    def replace(key, value)
+      upsert("sample", key, value) { |entry| entry[2] = value }
+    end
+
+    def upsert(type, key, value)
+      entry = @entries.find { |e| e in [ ^type, ^key, _ ] }
+      entry ? yield(entry) : @entries << [ type, key, value ]
     end
   end
 end

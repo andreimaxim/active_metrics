@@ -2,16 +2,13 @@
 
 module ActiveMetrics
   class Configuration
-    attr_accessor :batching_mode, :interval, :max_buffer_size, :overflow_policy,
-      :silent
+    attr_accessor :batching_mode, :interval, :silent
 
     alias_method :silent?, :silent
 
     def initialize
       @batching_mode = :immediate
       @interval = 5.0
-      @max_buffer_size = 10_000
-      @overflow_policy = :drop_newest
       @silent = silent_metrics? || test_environment?
     end
 

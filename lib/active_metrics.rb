@@ -14,13 +14,15 @@ module ActiveMetrics
   extend Forwardable
   extend self
 
+  def_delegators :config, :batching_mode, :interval, :silent?
+
   def setup
     yield(config) if block_given?
   end
 
-  def_delegators :config, :batching_mode, :interval, :max_buffer_size, :silent?
-
-  private
+  def collector
+    @collector ||= Collector.new
+  end
 
   def config
     @config ||= Configuration.new
@@ -30,5 +32,5 @@ end
 # Flush remaining metrics on exit (guarded for reloadable environments)
 unless defined?(@_active_metrics_at_exit_registered)
   @_active_metrics_at_exit_registered = true
-  at_exit { ActiveMetrics::Collector.instance.stop rescue nil }
+  at_exit { ActiveMetrics.collector.flush rescue nil }
 end

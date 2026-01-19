@@ -11,13 +11,11 @@ class ActiveMetrics::BucketTest < ActiveSupport::TestCase
     bucket = ActiveMetrics::Bucket.new
 
     assert bucket.empty?
-    assert_equal 0, bucket.size
   end
 
-  test "adding a count increments size" do
+  test "adding a count makes bucket non-empty" do
     @bucket.add("count", "requests", 1)
 
-    assert_equal 1, @bucket.size
     assert_not @bucket.empty?
   end
 
@@ -26,17 +24,13 @@ class ActiveMetrics::BucketTest < ActiveSupport::TestCase
     @bucket.add("count", "requests", 2)
     @bucket.add("count", "requests", 3)
 
-    metrics = @bucket.metrics
-
-    assert_equal [ [ "count", "requests", 6.0 ] ], metrics
+    assert_equal [ [ "count", "requests", 6.0 ] ], @bucket.drain
   end
 
   test "counts coerce values to floats" do
     @bucket.add("count", "requests", "5")
 
-    metrics = @bucket.metrics
-
-    assert_equal [ [ "count", "requests", 5.0 ] ], metrics
+    assert_equal [ [ "count", "requests", 5.0 ] ], @bucket.drain
   end
 
   test "measures collect all values per key" do
@@ -44,21 +38,17 @@ class ActiveMetrics::BucketTest < ActiveSupport::TestCase
     @bucket.add("measure", "db.query", 20)
     @bucket.add("measure", "db.query", 30)
 
-    metrics = @bucket.metrics
-
     assert_equal [
       [ "measure", "db.query", 10.0 ],
       [ "measure", "db.query", 20.0 ],
       [ "measure", "db.query", 30.0 ]
-    ], metrics
+    ], @bucket.drain
   end
 
   test "measures coerce values to floats" do
     @bucket.add("measure", "db.query", "15")
 
-    metrics = @bucket.metrics
-
-    assert_equal [ [ "measure", "db.query", 15.0 ] ], metrics
+    assert_equal [ [ "measure", "db.query", 15.0 ] ], @bucket.drain
   end
 
   test "samples keep last value per key" do
@@ -66,17 +56,13 @@ class ActiveMetrics::BucketTest < ActiveSupport::TestCase
     @bucket.add("sample", "queue.depth", 10)
     @bucket.add("sample", "queue.depth", 3)
 
-    metrics = @bucket.metrics
-
-    assert_equal [ [ "sample", "queue.depth", 3.0 ] ], metrics
+    assert_equal [ [ "sample", "queue.depth", 3.0 ] ], @bucket.drain
   end
 
   test "samples coerce values to floats" do
     @bucket.add("sample", "queue.depth", "7")
 
-    metrics = @bucket.metrics
-
-    assert_equal [ [ "sample", "queue.depth", 7.0 ] ], metrics
+    assert_equal [ [ "sample", "queue.depth", 7.0 ] ], @bucket.drain
   end
 
   test "metric type can be a symbol" do
@@ -84,11 +70,11 @@ class ActiveMetrics::BucketTest < ActiveSupport::TestCase
     @bucket.add(:measure, "timing", 50)
     @bucket.add(:sample, "gauge", 100)
 
-    metrics = @bucket.metrics
+    entries = @bucket.drain
 
-    assert_includes metrics, [ "count", "requests", 1.0 ]
-    assert_includes metrics, [ "measure", "timing", 50.0 ]
-    assert_includes metrics, [ "sample", "gauge", 100.0 ]
+    assert_includes entries, [ "count", "requests", 1.0 ]
+    assert_includes entries, [ "measure", "timing", 50.0 ]
+    assert_includes entries, [ "sample", "gauge", 100.0 ]
   end
 
   test "unknown metric types are ignored" do
@@ -96,7 +82,6 @@ class ActiveMetrics::BucketTest < ActiveSupport::TestCase
     @bucket.add("invalid", "bar", 2)
 
     assert @bucket.empty?
-    assert_equal 0, @bucket.size
   end
 
   test "clear resets the bucket" do
@@ -107,16 +92,15 @@ class ActiveMetrics::BucketTest < ActiveSupport::TestCase
     @bucket.clear
 
     assert @bucket.empty?
-    assert_equal 0, @bucket.size
-    assert_equal [], @bucket.metrics
+    assert_equal [], @bucket.drain
   end
 
-  test "metrics returns count, measure, sample in order" do
+  test "drain returns entries in insertion order" do
     @bucket.add("count", "c1", 1)
     @bucket.add("measure", "m1", 10)
     @bucket.add("sample", "s1", 100)
 
-    types = @bucket.metrics.map(&:first)
+    types = @bucket.drain.map(&:first)
 
     assert_equal [ "count", "measure", "sample" ], types
   end
@@ -129,9 +113,26 @@ class ActiveMetrics::BucketTest < ActiveSupport::TestCase
     @bucket.add("sample", "memory", 100)
     @bucket.add("sample", "cpu", 50)
 
-    metrics = @bucket.metrics
+    assert_equal 6, @bucket.drain.size
+  end
 
-    assert_equal 6, metrics.size
-    assert_equal 6, @bucket.size
+  test "drain returns entries and clears the bucket" do
+    @bucket.add("count", "requests", 5)
+    @bucket.add("measure", "timing", 100)
+
+    result = @bucket.drain
+
+    assert_equal [
+      [ "count", "requests", 5.0 ],
+      [ "measure", "timing", 100.0 ]
+    ], result
+    assert @bucket.empty?
+  end
+
+  test "drain on empty bucket returns empty array" do
+    result = @bucket.drain
+
+    assert_equal [], result
+    assert @bucket.empty?
   end
 end

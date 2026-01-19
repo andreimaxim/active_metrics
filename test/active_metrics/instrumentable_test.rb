@@ -13,17 +13,15 @@ class ActiveMetrics::InstrumentableTest < ActiveSupport::TestCase
     @config = ActiveMetrics::Configuration.new
     @config.batching_mode = :immediate
     @config.silent = false
-    ActiveMetrics::Collector.stubs(:bucket).returns(ActiveMetrics::Bucket.new)
     ActiveMetrics.stubs(:config).returns(@config)
-    @subscriber = ActiveMetrics::Collector.attach
+    ActiveMetrics.stubs(:collector).returns(ActiveMetrics::Collector.new)
+    @subscriber = ActiveMetrics.collector.attach
     @subject = TestClass.new
   end
 
   def teardown
     ActiveSupport::Notifications.unsubscribe(@subscriber)
   end
-
-  # count tests
 
   test "count records a count metric with default value of 1" do
     @subject.count("requests")
@@ -36,8 +34,6 @@ class ActiveMetrics::InstrumentableTest < ActiveSupport::TestCase
 
     assert_includes @output.join, "count#requests=5"
   end
-
-  # measure tests
 
   test "measure records a measure metric with explicit value" do
     @subject.measure("response_time", 150)
@@ -62,8 +58,6 @@ class ActiveMetrics::InstrumentableTest < ActiveSupport::TestCase
 
     assert_includes @output.join, "measure#empty=0"
   end
-
-  # sample tests
 
   test "sample records a sample metric" do
     @subject.sample("memory_usage", 1024)
