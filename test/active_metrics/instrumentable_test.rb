@@ -14,7 +14,7 @@ class ActiveMetrics::InstrumentableTest < ActiveSupport::TestCase
     @config.batching_mode = :immediate
     @config.silent = false
     ActiveMetrics.stubs(:config).returns(@config)
-    ActiveMetrics.stubs(:collector).returns(ActiveMetrics::Collector.new)
+    ActiveMetrics.reset_collector!
     @subscriber = ActiveMetrics.collector.attach
     @subject = TestClass.new
   end
@@ -66,8 +66,8 @@ class ActiveMetrics::InstrumentableTest < ActiveSupport::TestCase
   end
 
   test "sample records a sample metric with string value" do
-    @subject.sample("version", "1.0.0")
+    @subject.sample("version", "3.2.1")
 
-    assert_includes @output.join, "sample#version=1.0.0"
+    assert_includes @output.join, "sample#version=3.2"
   end
 end

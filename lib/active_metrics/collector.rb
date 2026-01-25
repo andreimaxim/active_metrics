@@ -20,9 +20,9 @@ module ActiveMetrics
       end
     end
 
-    def initialize
-      @bucket = Bucket.new
-      @last_flush_at = monotonic_now
+    def initialize(bucket:, sink:)
+      @bucket = bucket
+      @sink = sink
     end
 
     def attach
@@ -35,40 +35,16 @@ module ActiveMetrics
       return if ActiveMetrics.silent?
 
       key = name.sub(/\A#{PREFIX}/, "")
-      value = data[:value]
       metric = data[:metric]
+      value = data[:value]
 
-      case ActiveMetrics.batching_mode
-      when :immediate
-        emit([ [ metric, key, value ] ])
-      when :interval
-        @bucket.add(metric, key, value)
-        flush_if_due
-      end
+      batch = @bucket.ingest(metric, key, value)
+      @sink.emit(batch)
     end
 
-    def flush
-      @last_flush_at = monotonic_now
-      emit(@bucket.drain)
-    end
-
-    private
-
-    def flush_if_due
-      return unless (monotonic_now - @last_flush_at) >= ActiveMetrics.interval
-
-      flush
-    end
-
-    def emit(entries)
-      return if entries.empty?
-
-      tokens = entries.map { |metric, key, value| "#{metric}##{key}=#{value}" }
-      $stdout.puts(tokens.join(" "))
-    end
-
-    def monotonic_now
-      Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    def flush(force: false)
+      batch = @bucket.flush(force: force)
+      @sink.emit(batch)
     end
   end
 end

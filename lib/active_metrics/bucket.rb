@@ -5,6 +5,7 @@ module ActiveMetrics
     def initialize
       @mutex = Mutex.new
       @entries = []
+      @last_drain_at = monotonic_now
     end
 
     def add(metric, key, value)
@@ -31,13 +32,15 @@ module ActiveMetrics
       @mutex.synchronize { @entries.clear }
     end
 
-    def drain
-      entries = nil
+    def drain(interval: nil)
       @mutex.synchronize do
+        return nil if interval && (monotonic_now - @last_drain_at) < interval
+
+        @last_drain_at = monotonic_now
         entries = @entries
         @entries = []
+        entries
       end
-      entries
     end
 
     private
@@ -57,6 +60,10 @@ module ActiveMetrics
     def upsert(type, key, value)
       entry = @entries.find { |e| e in [ ^type, ^key, _ ] }
       entry ? yield(entry) : @entries << [ type, key, value ]
+    end
+
+    def monotonic_now
+      Process.clock_gettime(Process::CLOCK_MONOTONIC)
     end
   end
 end

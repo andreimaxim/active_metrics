@@ -59,7 +59,7 @@ Be mindful of any kind of conflicts when including the module in your class.
 Metrics are automatically silenced when `RACK_ENV` or `RAILS_ENV` is set to
 `test`, or when `SILENT_METRICS=1` (or `SILENT_METRICS=true`).
 
-You can also configure this explicitly:
+You can also configure this explicitly using the `setup`:
 
 ```ruby
 ActiveMetrics.setup do
